@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMARA — Open-World Crime in a Sun-Soaked City</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0e2a3a;
+    font-family: "Trebuchet MS", Verdana, sans-serif; color: #fff; }
+  #scene { position: fixed; inset: 0; }
+  #scene canvas { display: block; }
+  .panel { background: rgba(8, 20, 28, 0.72); border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px; padding: 8px 12px; backdrop-filter: blur(2px); }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #hud.on { display: block; }
+  #stats { position: absolute; top: 12px; left: 12px; min-width: 240px; }
+  #stats .row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+  #cash { font-size: 26px; font-weight: bold; color: #7dff9a; letter-spacing: 1px; }
+  #debt { font-size: 14px; color: #ffb3b3; }
+  #stars { font-size: 26px; letter-spacing: 3px; color: #ffd23e; text-shadow: 0 0 6px #000; }
+  #stars .off { color: rgba(255, 255, 255, 0.25); }
+  #healthbar { width: 180px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: linear-gradient(90deg, #37d67a, #9dff57); }
+  #healthfill.low { background: linear-gradient(90deg, #ff5340, #ff9a3d); }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 17px; font-weight: bold; text-align: center; max-width: 46vw; }
+  #objective small { display: block; font-size: 12px; font-weight: normal; color: #ffe9a8; margin-top: 2px; }
+  #minimapWrap { position: absolute; left: 12px; bottom: 12px; }
+  #minimap { display: block; border-radius: 50%; border: 3px solid rgba(255,255,255,0.55);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.45); background: #123; }
+  #speedo { position: absolute; right: 16px; bottom: 14px; text-align: right; }
+  #speed { font-size: 44px; font-weight: bold; line-height: 0.9; text-shadow: 0 2px 6px #000; }
+  #speed small { font-size: 14px; color: #cfe8ff; }
+  #carname { font-size: 14px; color: #ffe9a8; margin-top: 4px; text-shadow: 0 1px 4px #000; }
+  #banner { position: absolute; top: 22%; left: 50%; transform: translateX(-50%);
+    font-size: 42px; font-weight: bold; letter-spacing: 2px; color: #ffd23e;
+    text-shadow: 0 3px 0 #7a2d00, 0 6px 18px #000; opacity: 0; transition: opacity 0.25s; text-align: center; }
+  #banner.show { opacity: 1; }
+  #banner small { display: block; font-size: 18px; color: #fff; letter-spacing: 1px; text-shadow: 0 2px 8px #000; }
+  #toast { position: absolute; bottom: 170px; left: 50%; transform: translateX(-50%);
+    font-size: 16px; background: rgba(8,20,28,0.8); border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 14px; border-radius: 8px; opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+  #hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: rgba(255,255,255,0.85); text-shadow: 0 1px 4px #000; }
+  #vignette { position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 62%, rgba(0,0,0,0.28) 100%); }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; z-index: 5;
+    background: linear-gradient(180deg, rgba(6,26,40,0.25) 0%, rgba(6,26,40,0.78) 78%); }
+  .screen h1 { font-size: 84px; margin: 0; letter-spacing: 10px; color: #ffd23e;
+    text-shadow: 0 4px 0 #b3541e, 0 10px 30px #000; }
+  .screen h2 { font-size: 20px; margin: 6px 0 22px; color: #dff3ff; font-weight: normal; letter-spacing: 3px; }
+  .screen p { max-width: 560px; font-size: 16px; line-height: 1.55; color: #eaf6ff; margin: 0 0 18px; }
+  .screen button { pointer-events: auto; font-family: inherit; font-size: 19px; font-weight: bold;
+    padding: 13px 34px; margin: 6px; border-radius: 10px; border: 2px solid #ffd23e;
+    background: #ffb300; color: #231303; cursor: pointer; letter-spacing: 1px; }
+  .screen button:hover { background: #ffd23e; }
+  .screen button.ghost { background: rgba(10,30,44,0.8); color: #fff; border-color: rgba(255,255,255,0.6); }
+  .screen .keys { font-size: 13px; color: #bcd8e8; margin-top: 14px; line-height: 1.7; }
+  #title { display: flex; }
+  #pause { display: none; }
+  #busted { display: none; }
+  #busted h1 { color: #ff5340; text-shadow: 0 4px 0 #5c0d00, 0 10px 30px #000; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="vignette"></div>
+
+<div id="hud">
+  <div id="stats" class="panel">
+    <div class="row"><span id="cash">$0</span></div>
+    <div class="row"><span id="debt">Debt to Vera Kade: $12,000</span></div>
+    <div class="row"><span id="stars"></span></div>
+    <div class="row"><div id="healthbar"><div id="healthfill"></div></div><span id="healthnum">100</span></div>
+  </div>
+  <div id="objective" class="panel"><span id="objtext">Welcome to Solmara</span><small id="objsub"></small></div>
+  <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
+  <div id="speedo"><div id="speed">0<small> mph</small></div><div id="carname">On foot</div></div>
+  <div id="banner"></div>
+  <div id="toast"></div>
+  <div id="hint">WASD move &nbsp;·&nbsp; E enter / steal car &nbsp;·&nbsp; SPACE handbrake &nbsp;·&nbsp; SHIFT run &nbsp;·&nbsp; R reset car &nbsp;·&nbsp; M mute &nbsp;·&nbsp; ESC pause</div>
+</div>
+
+<div id="title" class="screen">
+  <h1>SOLMARA</h1>
+  <h2>AN OPEN-WORLD CRIME STORY &nbsp;·&nbsp; SUN, SAND &amp; SIRENS</h2>
+  <p>Rook is a getaway driver who owes the fixer <b>Vera Kade $12,000</b>. Four jobs stand
+  between him and a clean slate — across a sun-soaked coastal city of boulevards, docks,
+  towers and beach. Steal cars, outrun the Solmara police, and pay the debt down, job by job.</p>
+  <div>
+    <button id="btnNew">NEW GAME</button>
+    <button id="btnContinue" class="ghost">CONTINUE</button>
+  </div>
+  <div class="keys">WASD move / drive &nbsp;·&nbsp; mouse-drag to look &nbsp;·&nbsp; E get in / steal a car &nbsp;·&nbsp; SPACE handbrake<br>
+  SHIFT run &nbsp;·&nbsp; R reset a stuck car &nbsp;·&nbsp; M mute &nbsp;·&nbsp; ESC pause &amp; save &nbsp;·&nbsp; English UI, keyboard + mouse</div>
+</div>
+
+<div id="pause" class="screen">
+  <h1 style="font-size:56px">PAUSED</h1>
+  <p>Progress saves when you leave or finish a job. The city waits — Vera Kade does not.</p>
+  <div>
+    <button id="btnResume">RESUME</button>
+    <button id="btnQuit" class="ghost">SAVE &amp; QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div id="busted" class="screen">
+  <h1>BUSTED</h1>
+  <p id="bustedText">The Solmara police hauled you in. You wake at St. Marina Hospital, $500 lighter.</p>
+  <div><button id="btnBusted">BACK ON THE STREETS</button></div>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
